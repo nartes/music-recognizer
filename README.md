@@ -13,8 +13,9 @@ is applied.
 # Install
 
 ```
-make fetch-assets
 make init-tmp-dir
+make fetch-assets
+make build-assets
 ```
 
 # Run
@@ -27,4 +28,18 @@ or
 
 ```
 make run-wav-test
+```
+
+# Debug
+
+Replace run with debug
+
+```
+make debug-mic-test
+```
+
+or
+
+```
+make debug-wav-test
 ```
