@@ -6,26 +6,22 @@ from OnlineSTFT import OnlineSTFT
 import numpy as np
 import struct
 import sys
-import pdb
 import matplotlib.pyplot as plt
+from utilFunctions import wavread
 
 CHUNK = 8192
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 44100
-RECORD_SECONDS = 5
-WAVE_OUTPUT_FILENAME = "output.wav"
+RECORD_SECONDS = 1
+WAVE_OUTPUT_FILENAME = "build/output.wav"
 
 def wav_test(ostft, data):
-    wf = wave.open(sys.argv[1], 'rb')
+    fs, x = wavread(sys.argv[2])
 
-    datum = wf.readframes(CHUNK)
-
-    while datum != '':
-        datum = wf.readframes(CHUNK)
-        print "Wav datum lengthn"
-        print len(datum)
-        proc_frame(ostft, datum)
+    for pin in np.arange(0, len(x), CHUNK):
+        frame = x[pin : pin + CHUNK]
+        proc_frame(ostft, frame)
 
 def mic_test(ostft, data):
     p = pyaudio.PyAudio()
@@ -40,8 +36,9 @@ def mic_test(ostft, data):
 
     for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
         datum = stream.read(CHUNK)
-        data = np.append(datum, data)
-        proc_frame(ostft, datum)
+        data = np.append(data, datum)
+        frame = unpack_frame(datum)
+        proc_frame(ostft, frame)
 
     print("* done recording")
 
@@ -56,8 +53,7 @@ def mic_test(ostft, data):
     wf.writeframes(b''.join(data))
     wf.close()
 
-def proc_frame(ostft, datum):
-    frame = unpack_frame(datum)
+def proc_frame(ostft, frame):
     ostft.proc_frame(frame)
     print ostft.frames.size
     print ostft.spectrogram.size
@@ -65,8 +61,15 @@ def proc_frame(ostft, datum):
 def unpack_frame(datum):
     return np.array(struct.unpack('%dh' % (len(datum)/2), datum))
 
-ostft = OnlineSTFT()
+if __name__ == "__main__":
+    ostft = OnlineSTFT()
 
-data = np.array([]);
+    data = np.array([]);
 
-wav_test(ostft, data)
+    if sys.argv[1] == 'mic':
+        mic_test(ostft, data)
+    elif sys.argv[1] == 'wav':
+        wav_test(ostft, data)
+
+    if sys.argv[-1] == 'debug':
+        plt.pcolormesh(np.transpose(ostft.spectrogram)); plt.show()

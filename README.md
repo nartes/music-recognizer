@@ -9,3 +9,22 @@ is applied.
     - [ ] Local microphone
     - [ ] Web sockets
 - [ ] Add NMF based real time dumb pitch estimator
+
+# Install
+
+```
+make fetch-assets
+make init-tmp-dir
+```
+
+# Run
+
+```
+make run-mic-test
+```
+
+or
+
+```
+make run-wav-test
+```

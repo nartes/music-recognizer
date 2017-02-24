@@ -11,11 +11,13 @@ import utilFunctions as UF
 
 class OnlineSTFT:
     N = 4096
-    M = 2001
+    M = 2501
     H = M / 4
     w = get_window('hamming', M)
-    hM1 = int(math.floor((w.size+1)/2))                     # half analysis window size by rounding
-    hM2 = int(math.floor(w.size/2))                         # half analysis window size by floor
+    # half analysis window size by rounding
+    hM1 = int(math.floor((w.size+1)/2))
+    # half analysis window size by floor
+    hM2 = int(math.floor(w.size/2))
     w = w / sum(w)
 
     def __init__(self):
@@ -24,12 +26,14 @@ class OnlineSTFT:
         self.pin = self.hM1
 
     def proc_frame(self, frame):
-        self.frames = np.append(frame, self.frames)
+        self.frames = np.append(self.frames, frame)
         pend = self.frames.size - self.hM1
 
         while self.pin<pend:
-            x1 = self.frames[self.pin-self.hM1:self.pin+self.hM2]           # select frame
-            mX, pX = DFT.dftAnal(x1, self.w, self.N)                        # compute dft
+            # select frame
+            x1 = self.frames[self.pin-self.hM1:self.pin+self.hM2]
+            # compute dft
+            mX, pX = DFT.dftAnal(x1, self.w, self.N)
             if self.pin == self.hM1:
                 self.spectrogram = mX
             else:
