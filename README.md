@@ -42,3 +42,11 @@ or
 ```
 make debug-wav-test
 ```
+
+or
+
+```
+make npm-server &
+make debug-websocket-test
+```
+And then open http://localhost:3700 in your browser.

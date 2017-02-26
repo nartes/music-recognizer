@@ -56,7 +56,7 @@ def mic_test(ostft, data):
 
 def websocket_mic_test(ostft, data):
     stream = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    stream.connect(('', 8124))
+    stream.connect(('127.0.0.1', 8124))
 
     while 1:
         datum = stream.recv(CHUNK)
