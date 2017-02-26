@@ -3,4 +3,4 @@
 	url = https://github.com/MTG/sms-tools
 [submodule "browser-pcm-stream"]
 	path = deps/browser-pcm-stream
-	url = https://github.com/gabrielpoca/browser-pcm-stream.git
+	url = https://github.com/nartes/browser-pcm-stream.git
