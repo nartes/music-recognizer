@@ -1,7 +1,7 @@
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-    '../tmp/sms-tools/software/models/'))
+    '../deps/sms-tools/software/models/'))
 
 from scipy.signal import get_window
 import numpy as np
