@@ -14,7 +14,6 @@ is applied.
 
 ```
 make init-tmp-dir
-make fetch-assets
 make build-assets
 ```
 
