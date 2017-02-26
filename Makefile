@@ -20,6 +20,6 @@ fetch-assets:
 	cd tmp/; \
 	git clone https://github.com/MTG/sms-tools.git
 
-bulid-assets:
+build-assets:
 	cd tmp/sms-tools/software/models/utilFunctions_C; \
 	python2 compileModule.py build_ext --inplace
