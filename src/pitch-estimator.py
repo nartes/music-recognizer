@@ -8,6 +8,7 @@ import struct
 import sys
 import matplotlib.pyplot as plt
 from utilFunctions import wavread
+import socket
 
 CHUNK = 8192
 FORMAT = pyaudio.paInt16
@@ -53,10 +54,24 @@ def mic_test(ostft, data):
     wf.writeframes(b''.join(data))
     wf.close()
 
+def websocket_mic_test(ostft, data):
+    stream = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    stream.connect(('', 8124))
+
+    while 1:
+        datum = stream.recv(CHUNK)
+        if not datum:
+            break
+
+        frame = unpack_frame(datum)
+        proc_frame(ostft, frame)
+
+    print("* done streaming")
+
+    stream.close()
+
 def proc_frame(ostft, frame):
     ostft.proc_frame(frame)
-    print ostft.frames.size
-    print ostft.magnitudes.size
 
 def unpack_frame(datum):
     return np.array(struct.unpack('%dh' % (len(datum)/2), datum))
@@ -95,6 +110,8 @@ if __name__ == "__main__":
         mic_test(ostft, data)
     elif sys.argv[1] == 'wav':
         wav_test(ostft, data)
+    elif sys.argv[1] == 'websocket':
+        websocket_mic_test(ostft, data)
 
     if sys.argv[-1] == 'debug':
         plot_magnitude_spectrogram(ostft)

@@ -27,6 +27,7 @@ class OnlineSTFT:
     minf0 = 100
     maxf0 = 300
     nH = 60
+    MAX_BUF = int(fs / H)
 
     def __init__(self):
         self.frames = np.zeros(self.hM2)
@@ -75,3 +76,8 @@ class OnlineSTFT:
             print f0t
 
             self.pin += self.H
+
+        if self.fundamentals.shape[0] > self.MAX_BUF:
+            self.fundamentals = self.fundamentals[-self.MAX_BUF:]
+            self.magnitudes = self.magnitudes[-self.MAX_BUF:]
+            self.phases = self.phases[-self.MAX_BUF:]
