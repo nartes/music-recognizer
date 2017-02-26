@@ -18,6 +18,6 @@ init-tmp-dir:
 	git submodule init
 	git submodule update
 
-bulid-assets:
+build-assets:
 	cd deps/sms-tools/software/models/utilFunctions_C; \
 	python2 compileModule.py build_ext --inplace

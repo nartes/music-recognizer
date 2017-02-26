@@ -56,10 +56,35 @@ def mic_test(ostft, data):
 def proc_frame(ostft, frame):
     ostft.proc_frame(frame)
     print ostft.frames.size
-    print ostft.spectrogram.size
+    print ostft.magnitudes.size
 
 def unpack_frame(datum):
     return np.array(struct.unpack('%dh' % (len(datum)/2), datum))
+
+def plot_magnitude_spectrogram(ostft):
+    # frequency range to plot
+    maxplotfreq = 5000.0
+
+    numFrames = int(ostft.magnitudes[:,0].size)
+    frmTime = ostft.H*np.arange(numFrames)/float(ostft.fs)
+    binFreq = ostft.fs*np.arange(ostft.N*maxplotfreq/ostft.fs)/ostft.N
+    plt.pcolormesh(frmTime, binFreq, \
+                   np.transpose(ostft.magnitudes[:,:ostft.N*maxplotfreq/ostft.fs+1]))
+    plt.xlabel('time (sec)')
+    plt.ylabel('frequency (Hz)')
+    plt.autoscale(tight=True)
+
+def plot_fundamental(ostft):
+    # frequency range to plot
+    maxplotfreq = 5000.0
+
+    harms = ostft.fundamentals*np.less(ostft.fundamentals,maxplotfreq)
+    numFrames = int(ostft.fundamentals.size)
+    frmTime = ostft.H*np.arange(numFrames)/float(ostft.fs)
+    plt.plot(frmTime, harms, color='k', ms=3, alpha=1)
+    plt.xlabel('time(s)')
+    plt.ylabel('frequency(Hz)')
+    plt.autoscale(tight=True)
 
 if __name__ == "__main__":
     ostft = OnlineSTFT()
@@ -72,4 +97,6 @@ if __name__ == "__main__":
         wav_test(ostft, data)
 
     if sys.argv[-1] == 'debug':
-        plt.pcolormesh(np.transpose(ostft.spectrogram)); plt.show()
+        plot_magnitude_spectrogram(ostft)
+        plot_fundamental(ostft)
+        plt.show()
