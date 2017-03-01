@@ -11,7 +11,7 @@ import utilFunctions as UF
 
 class OnlineSTFT:
     N = 4096
-    M = 1801
+    M = 1025
     H = M / 4
     w = get_window('blackman', M)
     # half analysis window size by rounding
@@ -24,8 +24,8 @@ class OnlineSTFT:
     harmDevSlope = 0.01
     minSineDur = .02
     f0et = 20
-    minf0 = 100
-    maxf0 = 300
+    minf0 = 550
+    maxf0 = 960
     nH = 60
     MAX_BUF = int(fs / H)
 
@@ -35,6 +35,8 @@ class OnlineSTFT:
         self.phases = np.array([])
         self.fundamentals = np.array([])
         self.pin = self.hM1
+        self.fundamentals_file = open('build/twm.txt', 'w')
+        self.cur_time = 0.0
 
     def proc_frame(self, frame):
         self.frames = np.append(self.frames, frame)
@@ -73,11 +75,16 @@ class OnlineSTFT:
                     f0stable = 0
 
             self.fundamentals = np.append(self.fundamentals, f0t)
-            print f0t
+            self.fundamentals_file.write('%f\t%f\n' % (self.cur_time, f0t))
 
             self.pin += self.H
+            self.cur_time += 1.0 * self.H / self.fs
 
         if self.fundamentals.shape[0] > self.MAX_BUF:
             self.fundamentals = self.fundamentals[-self.MAX_BUF:]
             self.magnitudes = self.magnitudes[-self.MAX_BUF:]
             self.phases = self.phases[-self.MAX_BUF:]
+
+        if self.frames.shape[0] > self.fs:
+            self.pin -= self.frames.shape[0] - self.fs
+            self.frames = self.frames[-self.fs:]
