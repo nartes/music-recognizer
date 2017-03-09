@@ -14,7 +14,7 @@ CHUNK = 8192
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 44100
-RECORD_SECONDS = 1
+RECORD_SECONDS = 3
 WAVE_OUTPUT_FILENAME = "build/output.wav"
 
 def wav_test(ostft, data):
