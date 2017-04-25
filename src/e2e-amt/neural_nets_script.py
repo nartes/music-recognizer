@@ -5,10 +5,10 @@ import keras.optimizers
 import keras.utils
 import numpy
 
-def gen_sin_train_and_test(NOISE_AMPL = 0.5 * 1e-2,\
-                           ORDER = 2, AHEAD = 1, N = 4,
-                           SL = 1000, L = 10):
-    S = numpy.sin(1.0 * numpy.arange(SL) / N * 2 * numpy.pi) +\
+def gen_seq(NOISE_AMPL = 0.5 * 1e-2,\
+            ORDER = 2, AHEAD = 1, N = 4,
+            SL = 1000, L = 10, f_name = 'sin'):
+    S = numpy.__dict__[f_name](1.0 * numpy.arange(SL) / N * 2 * numpy.pi) +\
         numpy.random.rand(SL) * NOISE_AMPL
     K = ORDER + AHEAD
     T = numpy.random.randint(0, SL - K, L)
@@ -43,7 +43,7 @@ def sin_model():
 def sin_model2():
     model = keras.models.Sequential()
     for k in numpy.arange(1):
-        DW = 32
+        DW = 512
         if k > 1:
             model.add(keras.layers.Dense(DW, kernel_initializer = 'uniform'))
         else:
@@ -55,9 +55,9 @@ def sin_model2():
     model.add(keras.layers.Activation('softmax'))
     model.add(keras.layers.Dense(1))
 
-    model.compile(loss = 'mse',\
-                  optimizer = 'rmsprop',\
-                  metrics = ['mse'])
+    model.compile(loss = 'mae',\
+                  optimizer = 'adadelta',\
+                  metrics = ['mse', 'mae'])
 
     model.summary()
 
@@ -67,8 +67,8 @@ def test1():
     nb_classes = 3
     batch_size = 64
     nb_epoch = 1
-    X_train, Y_train = gen_sin_train_and_test(L = 60000, NOISE_AMPL = 5e-2)
-    X_test, Y_test = gen_sin_train_and_test(L = 100)
+    X_train, Y_train = gen_seq(L = 60000, NOISE_AMPL = 5e-2)
+    X_test, Y_test = gen_seq(L = 100)
     print(X_train.shape[0], 'train samples')
     print(X_test.shape[0], 'test samples')
 
@@ -88,11 +88,10 @@ def test1():
 
     return model
 
-def test2():
-    batch_size = 64
-    nb_epoch = 1
-    X_train, Y_train = gen_sin_train_and_test(L = 60000, NOISE_AMPL = 5e-2)
-    X_test, Y_test = gen_sin_train_and_test(L = 100)
+def test2(batch_size = 128, nb_epoch = 3, N = 10):
+    X_train, Y_train = gen_seq(\
+            N = N, L = 60000, NOISE_AMPL = 5e-4, f_name = 'cos')
+    X_test, Y_test = gen_seq(N = N, L = 1000)
     print(X_train.shape[0], 'train samples')
     print(X_test.shape[0], 'test samples')
 
@@ -107,7 +106,26 @@ def test2():
               batch_size = batch_size,\
               verbose = 1, validation_data = (X_test, Y_test))
     score = model.evaluate(X_test, Y_test, verbose = 0)
+
     print('Test score:', score[0])
     print('Test accuracy:', score[1])
 
+    print_test_samples(N = N, model = model)
+
     return model
+
+def print_test_samples(N, model):
+    for f_name in ['sin', 'cos']:
+        a = gen_seq(N = N, L = 10, NOISE_AMPL = 0,
+                    f_name = f_name)
+        b = model.predict(numpy.array(a[0]));
+        print(f_name,\
+              '\n\n=====\n\n',\
+              'a[1]\n\n',
+              a[1],\
+              '\n\n***\n\n',\
+              'b\n\n',
+              b,\
+              '\n\n***\n\n',\
+              'a[1] - b\n\n',
+              a[1] - b)
