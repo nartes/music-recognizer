@@ -1,0 +1,6 @@
+[submodule "deps/sms-tools"]
+	path = deps/sms-tools
+	url = https://github.com/MTG/sms-tools
+[submodule "browser-pcm-stream"]
+	path = deps/browser-pcm-stream
+	url = https://github.com/nartes/browser-pcm-stream.git
