@@ -4,6 +4,9 @@ import keras.layers
 import keras.optimizers
 import keras.utils
 import numpy
+import librosa
+import librosa.display
+import matplotlib.pyplot as plt
 
 def gen_seq(NOISE_AMPL = 0.5 * 1e-2,\
             ORDER = 2, AHEAD = 1, N = 4,
@@ -129,3 +132,14 @@ def print_test_samples(N, model):
               '\n\n***\n\n',\
               'a[1] - b\n\n',
               a[1] - b)
+
+def test3(fname = 'tmp/organ.wav', fs = 44100):
+    y, sr = librosa.load(fname, fs, mono = True)
+    C = librosa.cqt(y, sr = sr)
+    librosa.display.specshow(librosa.amplitude_to_db(C, ref = numpy.max),
+                             sr = sr, x_axis = 'time', y_axis = 'cqt_note')
+    plt.colorbar(format = '%+2.0f dB')
+    plt.title('Constant-Q power spectrum')
+    plt.tight_layout()
+
+    plt.show()
