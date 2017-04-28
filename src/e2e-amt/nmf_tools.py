@@ -121,3 +121,44 @@ def plot_w_matrix(FS, N, MFS, R, W):
         plt.plot(fhz, W[:, k - 1].T)
         plt.xlabel('Hz')
         plt.ylabel('amplitude')
+
+def test3(fname = 'tmp/organ.wav', sr = 44100):
+    y = librosa.load(fname, sr, mono = True)[0]
+    C = librosa.cqt(y, sr = sr)
+    librosa.display.specshow(librosa.amplitude_to_db(C, ref = numpy.max),
+                             sr = sr, x_axis = 'time', y_axis = 'cqt_note')
+    plt.colorbar(format = '%+2.0f dB')
+    plt.title('Constant-Q power spectrum')
+    plt.tight_layout()
+
+    plt.show()
+
+def test4(fname = 'tmp/organ.wav', sr = 44100, R = 11, tol = 1e-2,\
+          max_iter = 100, attempts = 5,\
+          hop_length = 512, bins_per_octave=12, n_bins = 84):
+    y = librosa.load(fname, sr, mono = True)[0]
+    C = librosa.cqt(y, sr = sr, hop_length = hop_length, n_bins = n_bins,\
+                    bins_per_octave = bins_per_octave)
+
+    W, H = nmf(numpy.abs(C), R, tol, max_iter, attempts)[:2]
+
+    L = C.shape[1]
+    HS = hop_length
+    MFS = C.shape[0]
+    FS = sr
+    TL = 0.0
+    M = 2048
+    N = 2048
+
+    librosa.display.specshow(librosa.amplitude_to_db(C, ref = numpy.max),
+                             sr = sr, x_axis = 'time', y_axis = 'cqt_note',\
+                             bins_per_octave = bins_per_octave,
+                             hop_length = hop_length)
+    plt.colorbar(format = '%+2.0f dB')
+    plt.title('Constant-Q power spectrum')
+    plt.tight_layout()
+
+    plot_h_matrix(L, M, HS, FS, TL, R, H)
+    plot_w_matrix(FS, N, MFS, R, W)
+
+    plt.show()
