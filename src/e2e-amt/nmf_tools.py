@@ -133,12 +133,11 @@ def test3(fname = 'tmp/organ.wav', sr = 44100):
 
     plt.show()
 
-def test4(fname = 'tmp/organ.wav', sr = 44100, R = 11, tol = 1e-2,\
+def test4(fname = 'tmp/organ.wav', sr = 44100, d_sr = 16000,\
+          R = 11, tol = 1e-2,\
           max_iter = 100, attempts = 5,\
           hop_length = 512, bins_per_octave=12, n_bins = 84):
-    y = librosa.load(fname, sr, mono = True)[0]
-    C = librosa.cqt(y, sr = sr, hop_length = hop_length, n_bins = n_bins,\
-                    bins_per_octave = bins_per_octave)
+    C = wav_to_cqt(fname, sr, downsample_sr = d_sr)[1]
 
     W, H = nmf(numpy.abs(C), R, tol, max_iter, attempts)[:2]
 
@@ -162,3 +161,11 @@ def test4(fname = 'tmp/organ.wav', sr = 44100, R = 11, tol = 1e-2,\
     plot_w_matrix(FS, N, MFS, R, W)
 
     plt.show()
+
+def wav_to_cqt(fname = 'tmp/organ.wav', original_sr = 44100,\
+        downsample_sr = 16000):
+    y = librosa.load(fname, original_sr, mono = True)[0]
+    y_ds = librosa.resample(y, original_sr, downsample_sr)
+    C = librosa.cqt(y_ds, sr = downsample_sr)
+
+    return y, C, y_ds
