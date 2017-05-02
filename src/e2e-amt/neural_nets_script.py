@@ -133,3 +133,17 @@ def print_test_samples(N, model):
               '\n\n***\n\n',\
               'a[1] - b\n\n',
               a[1] - b)
+
+def dumb_amt_model():
+    model = keras.models.Sequential()
+
+    model.add(keras.layers.SimpleRNN(
+            input_shape = (None, 1, 252)
+            output_dim = 32,
+            activation = 'relu'))
+    model.add(keras.layers.Dense(512, activation = 'relu'))
+    model.add(keras.layers.Dense(88, activation = 'softmax'))
+    model.add(keras.layers.Reshape(target_shape = (88, 1)))
+    model.add(keras.layers.SimpleRNN(88, activation = 'relu'))
+
+    return model

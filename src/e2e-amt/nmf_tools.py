@@ -174,3 +174,6 @@ def wav_to_cqt(fname = 'tmp/organ.wav', original_sr = 44100,\
                     bins_per_octave = bins_per_octave)
 
     return y, C, y_ds
+
+def normalize_cqt(C):
+    return (C - numpy.mean(C)) / numpy.var(C)
