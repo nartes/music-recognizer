@@ -176,4 +176,31 @@ def wav_to_cqt(fname = 'tmp/organ.wav', original_sr = 44100,\
     return y, C, y_ds
 
 def normalize_cqt(C):
-    return (C - numpy.mean(C)) / numpy.var(C)
+    C = C - numpy.mean(C)
+    C = C / numpy.var(C)
+    return C
+
+def maps_notes_to_y_seq(notes):
+    MINN = librosa.note_to_midi('C1')
+    MINT = 0.0
+    MAXT = 10.0
+    N_BINS = 252
+    FPS = 16000 / 512
+    y_seq = numpy.zeros((88, int(numpy.ceil(MAXT * FPS))), dtype = numpy.float)
+
+    for k in numpy.arange(notes.shape[0]):
+        cur_note = numpy.int(numpy.floor(numpy.float(notes[k][2]) - MINN))
+
+        if cur_note < 0:
+            continue
+
+        start_frame = numpy.int(numpy.floor(\
+                FPS * numpy.float(notes[k][0])\
+                ))
+        end_frame = numpy.int(numpy.floor(\
+                FPS * numpy.float(notes[k][1])\
+                ))
+        for t in numpy.arange(start_frame, end_frame + 1):
+            y_seq[cur_note][t] = 1.0;
+
+    return y_seq

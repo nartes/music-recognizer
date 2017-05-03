@@ -8,6 +8,7 @@ import librosa
 import librosa.display
 import matplotlib.pyplot as plt
 import nmf_tools
+import glob
 
 def gen_seq(NOISE_AMPL = 0.5 * 1e-2,\
             ORDER = 2, AHEAD = 1, N = 4,
@@ -138,8 +139,8 @@ def dumb_amt_model():
     model = keras.models.Sequential()
 
     model.add(keras.layers.SimpleRNN(
-            input_shape = (None, 1, 252)
-            output_dim = 32,
+            input_shape = (1, 252),
+            units = 32,
             activation = 'relu'))
     model.add(keras.layers.Dense(512, activation = 'relu'))
     model.add(keras.layers.Dense(88, activation = 'softmax'))
@@ -147,3 +148,32 @@ def dumb_amt_model():
     model.add(keras.layers.SimpleRNN(88, activation = 'relu'))
 
     return model
+
+def dumb_amt_test(model = dumb_amt_model(),
+                  n_bins = 252,
+                  bins_per_octave = 36,
+                  hop_length = 512,
+                  sr = 16000,
+                  fmin = librosa.note_to_hz('C1')):
+
+    txts = glob.glob('tmp/MAPS-dataset/*/ISOL/NO/*.txt')
+    wavs = glob.glob('tmp/MAPS-dataset/*/ISOL/NO/*.wav')
+
+    notes = numpy.loadtxt(fname = txts[0], skiprows = 1, ndmin = 2)
+    C = nmf_tools.wav_to_cqt(fname = wavs[0],
+                             n_bins = n_bins,
+                             bins_per_octave = bins_per_octave,
+                             fmin = fmin)[1]
+    C = nmf_tools.normalize_cqt(C)
+
+    y_seq = nmf_tools.maps_notes_to_y_seq(notes)
+
+    librosa.display.specshow(librosa.amplitude_to_db(y_seq, ref = numpy.max),
+                             sr = sr, x_axis = 'time', y_axis = 'cqt_note',\
+                             bins_per_octave = bins_per_octave,
+                             hop_length = hop_length)
+    plt.title('Ground truth midi transcription')
+    plt.tight_layout()
+    plt.show()
+
+    return y_seq, C, notes, model
