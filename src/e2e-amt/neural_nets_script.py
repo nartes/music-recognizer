@@ -139,13 +139,17 @@ def dumb_amt_model():
     model = keras.models.Sequential()
 
     model.add(keras.layers.SimpleRNN(
-            input_shape = (1, 252),
+            batch_input_shape = (None, 1, 252),
             units = 32,
             activation = 'relu'))
     model.add(keras.layers.Dense(512, activation = 'relu'))
     model.add(keras.layers.Dense(88, activation = 'softmax'))
     model.add(keras.layers.Reshape(target_shape = (88, 1)))
     model.add(keras.layers.SimpleRNN(88, activation = 'relu'))
+
+    model.compile(loss = 'mae',\
+                  optimizer = 'adadelta',\
+                  metrics = ['mse', 'mae'])
 
     return model
 
@@ -154,6 +158,7 @@ def dumb_amt_test(model = dumb_amt_model(),
                   bins_per_octave = 36,
                   hop_length = 512,
                   sr = 16000,
+                  o_sr = 44100,
                   fmin = librosa.note_to_hz('C1')):
 
     txts = glob.glob('tmp/MAPS-dataset/*/ISOL/NO/*.txt')
@@ -162,18 +167,38 @@ def dumb_amt_test(model = dumb_amt_model(),
     notes = numpy.loadtxt(fname = txts[0], skiprows = 1, ndmin = 2)
     C = nmf_tools.wav_to_cqt(fname = wavs[0],
                              n_bins = n_bins,
-                             bins_per_octave = bins_per_octave,
-                             fmin = fmin)[1]
+                             bins_per_octave = bins_per_octave)[1]
     C = nmf_tools.normalize_cqt(C)
 
     y_seq = nmf_tools.maps_notes_to_y_seq(notes)
 
+    plot_y_seq(y_seq, sr = sr, bins_per_octave = bins_per_octave,
+               hop_length = hop_length,
+               title = 'Ground truth midi transcription')
+
+    X = C.T.reshape(-1, 1, C.shape[0])
+
+    Y_test = y_seq[:, :C.shape[1]].T
+
+    model.fit(X, Y_test, epochs = 1, batch_size = 1, verbose = 1,
+              validation_data = (X, Y_test))
+
+    p_y_seq = model.predict(C.T.reshape(-1, 1, C.shape[0])).T
+
+    plt.figure()
+    plot_y_seq(p_y_seq, sr = sr, bins_per_octave = bins_per_octave,
+               hop_length = hop_length,
+               title = 'Predicted midi transcription')
+
+    plt.show()
+
+    return y_seq, C, notes, model, p_y_seq
+
+def plot_y_seq(y_seq, sr, bins_per_octave, hop_length, title):
     librosa.display.specshow(librosa.amplitude_to_db(y_seq, ref = numpy.max),
                              sr = sr, x_axis = 'time', y_axis = 'cqt_note',\
                              bins_per_octave = bins_per_octave,
                              hop_length = hop_length)
-    plt.title('Ground truth midi transcription')
+    plt.title(title)
     plt.tight_layout()
-    plt.show()
 
-    return y_seq, C, notes, model
