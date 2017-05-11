@@ -177,7 +177,7 @@ def wav_to_cqt(fname = 'tmp/organ.wav', original_sr = 44100,\
 
 def normalize_cqt(C):
     C = C - numpy.mean(C)
-    C = C / numpy.var(C)
+    C = C / numpy.sqrt(numpy.var(C))
     return C
 
 def maps_notes_to_y_seq(notes):

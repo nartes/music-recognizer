@@ -9,6 +9,7 @@ import librosa.display
 import matplotlib.pyplot as plt
 import nmf_tools
 import glob
+import sys
 
 def gen_seq(NOISE_AMPL = 0.5 * 1e-2,\
             ORDER = 2, AHEAD = 1, N = 4,
@@ -153,46 +154,114 @@ def dumb_amt_model():
 
     return model
 
+def dnn_amt_model(loss = 'binary_crossentropy',
+                  optimizer = 'rmsprop',
+                  metrics = ['accuracy']):
+    model = keras.models.Sequential()
+
+    model.add(keras.layers.Dense(
+            batch_input_shape = (None, 1, 252),
+            units = 64,
+            kernel_initializer = 'uniform',
+            activation = 'relu'))
+    model.add(keras.layers.Dropout(0.3))
+    model.add(keras.layers.Dense(512, activation = 'relu'))
+    model.add(keras.layers.Dropout(0.3))
+    model.add(keras.layers.Dense(88, activation = 'relu'))
+    model.add(keras.layers.Dropout(0.3))
+    model.add(keras.layers.Dense(88, activation = 'sigmoid'))
+    model.add(keras.layers.Reshape(target_shape = (88,)))
+    #model.add(keras.layers.Dropout(0.3))
+
+    model.compile(loss = loss, optimizer = optimizer, metrics = metrics)
+
+    return model
+
+def parse_notes(txt_fname,
+                num_frames,
+                n_bins = 252,
+                bins_per_octave = 36):
+    notes = numpy.loadtxt(fname = txt_fname, skiprows = 1, ndmin = 2)
+
+    y_seq = nmf_tools.maps_notes_to_y_seq(notes)
+
+    Y_test = y_seq[:, :num_frames].T
+
+    return Y_test, y_seq
+
+def process_C(wav_fname,
+              n_bins = 252,
+              bins_per_octave = 36):
+    C = nmf_tools.wav_to_cqt(fname = wav_fname,
+                             n_bins = n_bins,
+                             bins_per_octave = bins_per_octave)[1]
+    C = numpy.abs(C)
+    C = nmf_tools.normalize_cqt(C)
+
+    X = C.T.reshape(-1, 1, C.shape[0])
+
+    return X
+
+
 def dumb_amt_test(model = dumb_amt_model(),
                   n_bins = 252,
                   bins_per_octave = 36,
                   hop_length = 512,
                   sr = 16000,
                   o_sr = 44100,
-                  fmin = librosa.note_to_hz('C1')):
+                  fmin = librosa.note_to_hz('C1'),
+                  plot_each = False,
+                  max_files = 10,
+                  batch_size = 1,
+                  glob_param = 'ISOL/NO'):
 
-    txts = glob.glob('tmp/MAPS-dataset/*/ISOL/NO/*.txt')
-    wavs = glob.glob('tmp/MAPS-dataset/*/ISOL/NO/*.wav')
+    txts = glob.glob(\
+            'tmp/MAPS-dataset/*/' + glob_param + '/*.txt')
+    wavs = glob.glob(\
+            'tmp/MAPS-dataset/*/' + glob_param + '/*.wav')
 
-    notes = numpy.loadtxt(fname = txts[0], skiprows = 1, ndmin = 2)
-    C = nmf_tools.wav_to_cqt(fname = wavs[0],
-                             n_bins = n_bins,
-                             bins_per_octave = bins_per_octave)[1]
-    C = nmf_tools.normalize_cqt(C)
+    X = None
+    Y_test = None
 
-    y_seq = nmf_tools.maps_notes_to_y_seq(notes)
+    for txt_fname in txts:
+        wav_fname = txt_fname[:-4] + '.wav'
 
-    plot_y_seq(y_seq, sr = sr, bins_per_octave = bins_per_octave,
-               hop_length = hop_length,
-               title = 'Ground truth midi transcription')
+        X = process_C(wav_fname = wav_fname,
+                      n_bins = n_bins,
+                      bins_per_octave = bins_per_octave)
+        Y_test, y_seq = parse_notes(\
+                txt_fname = txt_fname,
+                n_bins = n_bins,
+                bins_per_octave = bins_per_octave,
+                num_frames = X.shape[0])
 
-    X = C.T.reshape(-1, 1, C.shape[0])
+        model.fit(X, Y_test, epochs = 1, batch_size = 1, verbose = 1,
+                  validation_data = (X, Y_test))
 
-    Y_test = y_seq[:, :C.shape[1]].T
+        p_y_seq = model.predict(X).T
 
-    model.fit(X, Y_test, epochs = 1, batch_size = 1, verbose = 1,
-              validation_data = (X, Y_test))
+        if plot_each:
+            plt.figure()
+            plot_y_seq(y_seq, sr = sr, bins_per_octave = bins_per_octave,
+                       hop_length = hop_length,
+                       title = 'Ground truth midi transcription')
 
-    p_y_seq = model.predict(C.T.reshape(-1, 1, C.shape[0])).T
 
-    plt.figure()
-    plot_y_seq(p_y_seq, sr = sr, bins_per_octave = bins_per_octave,
-               hop_length = hop_length,
-               title = 'Predicted midi transcription')
+            plt.figure()
+            plot_y_seq(p_y_seq, sr = sr, bins_per_octave = bins_per_octave,
+                       hop_length = hop_length,
+                       title = 'Predicted midi transcription')
 
-    plt.show()
+            plt.show()
 
-    return y_seq, C, notes, model, p_y_seq
+            if sys.stdin.readline() == 'e\n':
+                break
+
+        max_files -= 1
+        if max_files == 0:
+            break
+
+    return model
 
 def plot_y_seq(y_seq, sr, bins_per_octave, hop_length, title):
     librosa.display.specshow(librosa.amplitude_to_db(y_seq, ref = numpy.max),
