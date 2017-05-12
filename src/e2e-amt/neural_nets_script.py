@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import nmf_tools
 import glob
 import sys
+import io
 
 def gen_seq(NOISE_AMPL = 0.5 * 1e-2,\
             ORDER = 2, AHEAD = 1, N = 4,
@@ -202,6 +203,98 @@ def process_C(wav_fname,
 
     return X
 
+def set_cached_data(txt_fname, wav_fname, X, Y_test, ignore = False):
+    cache_file = txt_fname[:-4] + '.meta.npz'
+
+    if len(glob.glob(cache_file)) >= 1 and not ignore:
+        return False
+
+    try:
+        numpy.savez(cache_file, X = X, Y_test = Y_test)
+        return True
+    except:
+        return False
+
+
+def get_cached_data(txt_fname, wav_fname):
+    cache_file = txt_fname[:-4] + '.meta.npz'
+
+    try:
+        metadata = numpy.load(cache_file)
+        X = metadata['X']
+        Y_test = metadata['Y_test']
+        return X, Y_test
+    except:
+        return None, None
+
+def generate_training_data(n_bins = 252,
+                  bins_per_octave = 36,
+                  hop_length = 512,
+                  sr = 16000,
+                  o_sr = 44100,
+                  fmin = librosa.note_to_hz('C1'),
+                  max_files = 10,
+                  batch_size = 1,
+                  glob_param = 'ISOL/NO',
+                  ignore = False):
+    txts = glob.glob(\
+            'tmp/MAPS-dataset/*/' + glob_param + '/*.txt')
+    wavs = glob.glob(\
+            'tmp/MAPS-dataset/*/' + glob_param + '/*.wav')
+
+    if max_files == -1 or max_files is None:
+        max_files = len(txts)
+
+    X = None
+    Y_test = None
+
+    for txt_fname in txts:
+        wav_fname = txt_fname[:-4] + '.wav'
+
+        print(f'Left {max_files}')
+        print(f'File: {txt_fname} started.')
+
+        cur_X = None
+        cur_Y_test = None
+
+        if not ignore:
+            cur_X, cur_Y_test = get_cached_data(txt_fname, wav_fname)
+
+        if cur_X is None or cur_Y_test is None:
+            cur_X = process_C(wav_fname = wav_fname,
+                          n_bins = n_bins,
+                          bins_per_octave = bins_per_octave)
+            cur_Y_test, y_seq = parse_notes(\
+                    txt_fname = txt_fname,
+                    n_bins = n_bins,
+                    bins_per_octave = bins_per_octave,
+                    num_frames = cur_X.shape[0])
+
+            set_cached_data(txt_fname = txt_fname,
+                            wav_fname = wav_fname,
+                            X = cur_X,
+                            Y_test = cur_Y_test,
+                            ignore = ignore)
+        else:
+            print('Found a cached file.')
+
+        if X is None:
+            X = cur_X
+        else:
+            X = numpy.vstack((X, cur_X))
+
+        if Y_test is None:
+            Y_test = cur_Y_test
+        else:
+            Y_test = numpy.vstack((Y_test, cur_Y_test))
+
+        print(f'File: {txt_fname} ended.')
+
+        max_files -= 1
+        if max_files == 0:
+            break
+
+    return X, Y_test
 
 def dumb_amt_test(model = dumb_amt_model(),
                   n_bins = 252,
@@ -215,53 +308,38 @@ def dumb_amt_test(model = dumb_amt_model(),
                   batch_size = 1,
                   glob_param = 'ISOL/NO'):
 
-    txts = glob.glob(\
-            'tmp/MAPS-dataset/*/' + glob_param + '/*.txt')
-    wavs = glob.glob(\
-            'tmp/MAPS-dataset/*/' + glob_param + '/*.wav')
+    X, Y_test = generate_training_data(n_bins = n_bins,
+            bins_per_octave = bins_per_octave,
+            hop_length = hop_length,
+            sr = sr,
+            o_sr = o_sr,
+            fmin = fmin,
+            max_files = max_files,
+            batch_size = batch_size,
+            glob_param = glob_param)
 
-    X = None
-    Y_test = None
-
-    for txt_fname in txts:
-        wav_fname = txt_fname[:-4] + '.wav'
-
-        X = process_C(wav_fname = wav_fname,
-                      n_bins = n_bins,
-                      bins_per_octave = bins_per_octave)
-        Y_test, y_seq = parse_notes(\
-                txt_fname = txt_fname,
-                n_bins = n_bins,
-                bins_per_octave = bins_per_octave,
-                num_frames = X.shape[0])
-
-        model.fit(X, Y_test, epochs = 1, batch_size = 1, verbose = 1,
-                  validation_data = (X, Y_test))
-
-        p_y_seq = model.predict(X).T
-
-        if plot_each:
-            plt.figure()
-            plot_y_seq(y_seq, sr = sr, bins_per_octave = bins_per_octave,
-                       hop_length = hop_length,
-                       title = 'Ground truth midi transcription')
-
-
-            plt.figure()
-            plot_y_seq(p_y_seq, sr = sr, bins_per_octave = bins_per_octave,
-                       hop_length = hop_length,
-                       title = 'Predicted midi transcription')
-
-            plt.show()
-
-            if sys.stdin.readline() == 'e\n':
-                break
-
-        max_files -= 1
-        if max_files == 0:
-            break
+    model.fit(X, Y_test, epochs = 1, batch_size = 1, verbose = 1,
+              validation_data = (X, Y_test))
 
     return model
+
+def plot_processing(p_y_seq,
+        y_seq,
+        sr = 16000,
+        bins_per_octave = 36,
+        hop_length = 512):
+    plt.figure()
+    plot_y_seq(y_seq, sr = sr, bins_per_octave = bins_per_octave,
+               hop_length = hop_length,
+               title = 'Ground truth midi transcription')
+
+
+    plt.figure()
+    plot_y_seq(p_y_seq, sr = sr, bins_per_octave = bins_per_octave,
+               hop_length = hop_length,
+               title = 'Predicted midi transcription')
+
+    plt.show()
 
 def plot_y_seq(y_seq, sr, bins_per_octave, hop_length, title):
     librosa.display.specshow(librosa.amplitude_to_db(y_seq, ref = numpy.max),
