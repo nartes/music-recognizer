@@ -165,14 +165,10 @@ def dnn_amt_model(loss = 'binary_crossentropy',
             units = 64,
             kernel_initializer = 'uniform',
             activation = 'relu'))
-    model.add(keras.layers.Dropout(0.3))
-    model.add(keras.layers.Dense(512, activation = 'relu'))
-    model.add(keras.layers.Dropout(0.3))
-    model.add(keras.layers.Dense(88, activation = 'relu'))
+    model.add(keras.layers.Dense(64, activation = 'relu'))
     model.add(keras.layers.Dropout(0.3))
     model.add(keras.layers.Dense(88, activation = 'sigmoid'))
     model.add(keras.layers.Reshape(target_shape = (88,)))
-    #model.add(keras.layers.Dropout(0.3))
 
     model.compile(loss = loss, optimizer = optimizer, metrics = metrics)
 
@@ -304,7 +300,9 @@ def dumb_amt_test(model = dumb_amt_model(),
                   o_sr = 44100,
                   fmin = librosa.note_to_hz('C1'),
                   plot_each = False,
+                  epochs = 1,
                   max_files = 10,
+                  val_max_files = 3,
                   batch_size = 1,
                   glob_param = 'ISOL/NO'):
 
@@ -318,8 +316,20 @@ def dumb_amt_test(model = dumb_amt_model(),
             batch_size = batch_size,
             glob_param = glob_param)
 
-    model.fit(X, Y_test, epochs = 1, batch_size = 1, verbose = 1,
-              validation_data = (X, Y_test))
+    val_X, val_Y_test = generate_training_data(max_files = val_max_files)
+
+    model.fit(X, Y_test, epochs = epochs, batch_size = batch_size, verbose = 1,
+              validation_data = (val_X, val_Y_test))
+
+    pred_Y = model.predict(val_X)
+
+    plt.subplot(131)
+    plt.imshow(val_X.squeeze())
+    plt.subplot(132)
+    plt.imshow(val_Y_test.squeeze())
+    plt.subplot(133)
+    plt.imshow(pred_Y.squeeze())
+    plt.show()
 
     return model
 
