@@ -165,7 +165,11 @@ def dnn_amt_model(loss = 'binary_crossentropy',
             units = 64,
             kernel_initializer = 'uniform',
             activation = 'relu'))
-    model.add(keras.layers.Dense(64, activation = 'relu'))
+    model.add(keras.layers.Dense(512, activation = 'relu'))
+    model.add(keras.layers.Dropout(0.3))
+    model.add(keras.layers.Dense(512, activation = 'relu'))
+    model.add(keras.layers.Dropout(0.3))
+    model.add(keras.layers.Dense(512, activation = 'relu'))
     model.add(keras.layers.Dropout(0.3))
     model.add(keras.layers.Dense(88, activation = 'sigmoid'))
     model.add(keras.layers.Reshape(target_shape = (88,)))
@@ -195,12 +199,20 @@ def process_C(wav_fname,
     C = numpy.abs(C)
     C = nmf_tools.normalize_cqt(C)
 
+    C += numpy.min(C)
+
     X = C.T.reshape(-1, 1, C.shape[0])
 
     return X
 
-def set_cached_data(txt_fname, wav_fname, X, Y_test, ignore = False):
-    cache_file = txt_fname[:-4] + '.meta.npz'
+def set_cached_data(txt_fname = None,
+                    wav_fname = None,
+                    X = None,
+                    Y_test = None,
+                    ignore = False,
+                    cache_file = None):
+    if cache_file is None:
+        cache_file = txt_fname[:-4] + '.meta.npz'
 
     if len(glob.glob(cache_file)) >= 1 and not ignore:
         return False
@@ -211,9 +223,9 @@ def set_cached_data(txt_fname, wav_fname, X, Y_test, ignore = False):
     except:
         return False
 
-
-def get_cached_data(txt_fname, wav_fname):
-    cache_file = txt_fname[:-4] + '.meta.npz'
+def get_cached_data(txt_fname = None, wav_fname = None, cache_file = None):
+    if cache_file is None:
+        cache_file = txt_fname[:-4] + '.meta.npz'
 
     try:
         metadata = numpy.load(cache_file)
@@ -304,19 +316,29 @@ def dumb_amt_test(model = dumb_amt_model(),
                   max_files = 10,
                   val_max_files = 3,
                   batch_size = 1,
-                  glob_param = 'ISOL/NO'):
+                  glob_param = 'ISOL/NO',
+                  ignore = False,
+                  training_data = None):
 
-    X, Y_test = generate_training_data(n_bins = n_bins,
-            bins_per_octave = bins_per_octave,
-            hop_length = hop_length,
-            sr = sr,
-            o_sr = o_sr,
-            fmin = fmin,
-            max_files = max_files,
-            batch_size = batch_size,
-            glob_param = glob_param)
+    X = None
+    Y_test = None
 
-    val_X, val_Y_test = generate_training_data(max_files = val_max_files)
+    if training_data is None:
+        X, Y_test = generate_training_data(n_bins = n_bins,
+                bins_per_octave = bins_per_octave,
+                hop_length = hop_length,
+                sr = sr,
+                o_sr = o_sr,
+                fmin = fmin,
+                max_files = max_files,
+                batch_size = batch_size,
+                glob_param = glob_param,
+                ignore = ignore)
+    else:
+        X, Y_test = training_data
+
+    val_X, val_Y_test = generate_training_data(max_files = val_max_files,
+            ignore = ignore)
 
     model.fit(X, Y_test, epochs = epochs, batch_size = batch_size, verbose = 1,
               validation_data = (val_X, val_Y_test))
@@ -359,3 +381,17 @@ def plot_y_seq(y_seq, sr, bins_per_octave, hop_length, title):
     plt.title(title)
     plt.tight_layout()
 
+def amt_frame_metrics(y_true, y_pred):
+    TP = keras.backend.sum(
+            keras.backend.minimum(y_true, y_pred),
+            axis = None)
+    TP_FN = keras.backend.sum(keras.backend.abs(y_true), axis = None)
+    TP_FP = keras.backend.sum(keras.backend.abs(y_pred), axis = None)
+
+    R = keras.backend.sum(TP / (TP_FN + 1e-6))
+
+    P = keras.backend.sum(TP / (TP_FP + 1e-6))
+
+    F = keras.backend.clip(2 * P * R / (P + R + 1e-6), 0.0, 1.0)
+
+    return {'P': P, 'R': R, 'F': F}
