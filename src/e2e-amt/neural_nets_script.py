@@ -395,3 +395,24 @@ def amt_frame_metrics(y_true, y_pred):
     F = keras.backend.clip(2 * P * R / (P + R + 1e-6), 0.0, 1.0)
 
     return {'P': P, 'R': R, 'F': F}
+
+def preprocess_dataset(glob_param = 'ISOL/NO',
+                       max_files = None,
+                       ignore_each = False,
+                       ignore_all = False,
+                       cache_file = 'tmp/MAPS-dataset/ISOL_NO_ALL.meta.npz'):
+    X, Y_test = (None, None)
+
+    if not ignore_all:
+        X, Y_test = get_cached_data(cache_file = cache_file)
+
+    if X is None or Y_test is None:
+        X, Y_test = generate_training_data(glob_param = glob_param,
+                                           max_files = max_files,
+                                           ignore = ignore_each)
+        set_cached_data(X = X,
+                        Y_test = Y_test,
+                        cache_file = cache_file,
+                        ignore = ignore_all)
+
+    return X, Y_test
