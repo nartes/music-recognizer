@@ -180,27 +180,44 @@ def normalize_cqt(C):
     C = C / numpy.sqrt(numpy.var(C))
     return C
 
-def maps_notes_to_y_seq(notes):
-    MINN = librosa.note_to_midi('C1')
-    MINT = 0.0
-    MAXT = 10.0
-    N_BINS = 252
-    FPS = 16000 / 512
-    y_seq = numpy.zeros((88, int(numpy.ceil(MAXT * FPS))), dtype = numpy.float)
+def maps_notes_to_y_seq(notes,
+        decay = False,
+        minn = librosa.note_to_midi('C1'),
+        mint = 0.0,
+        n_bins = 252,
+        fps = 16000 / 512,
+        maxt = None,
+        y_n_bins = 88,
+        nframes = None):
+
+    if maxt is None:
+        maxt = numpy.max(notes[:, 1])
+
+    if nframes is None:
+        nframes = int(numpy.ceil(maxt * fps))
+
+    y_seq = numpy.zeros((y_n_bins, nframes), dtype = numpy.float)
 
     for k in numpy.arange(notes.shape[0]):
-        cur_note = numpy.int(numpy.floor(numpy.float(notes[k][2]) - MINN))
+        cur_note = numpy.int(numpy.floor(numpy.float(notes[k][2]) - minn))
 
         if cur_note < 0:
             continue
 
         start_frame = numpy.int(numpy.floor(\
-                FPS * numpy.float(notes[k][0])\
+                fps * numpy.float(notes[k][0])\
                 ))
         end_frame = numpy.int(numpy.floor(\
-                FPS * numpy.float(notes[k][1])\
+                fps * numpy.float(notes[k][1])\
                 ))
-        for t in numpy.arange(start_frame, end_frame + 1):
-            y_seq[cur_note][t] = 1.0;
+        val = None
+        if not decay:
+            val = numpy.ones((1, end_frame - start_frame + 1))
+        else:
+            val = numpy.linspace(1, 0.0, end_frame - start_frame + 1)
+
+        y_seq[cur_note][start_frame : end_frame + 1] = val[:]
+
+    y_seq[y_seq > 1.0] = 0.0
 
     return y_seq
